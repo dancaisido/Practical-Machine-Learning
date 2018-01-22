@@ -1,0 +1,99 @@
+---
+title: "Course 8: Prediction Assignment Writeup"
+author: "drc"
+date: "January 22, 2018"
+output: md_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###**Background about the Data**
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+
+####**Data Preparation**
+```{r d1, warning=FALSE}
+#Set your working directory
+setwd("C:/Users/dcai0559/Desktop/Coursera/Practical Machine Learning")
+
+#Load the required packages in this analysis
+library(rpart)          #For Partitioning the data, classification by decision trees, and for regression trees
+library(caret)          #For linear discriminant Analysis
+library(randomForest)   #For Creating Random forest for Regression
+library(e1071)          #For Linear discriminant Analysis
+
+#Download the datasets
+
+url_training <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+url_test <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+data_training <- read.csv(url(url_training), na.strings=c("NA","#DIV/0!",""))
+data_test <- read.csv(url(url_test), na.strings=c("NA","#DIV/0!",""))
+```
+
+Explore the data.
+```{r d2, results='hide'}
+names(data_training)
+str(data_training)
+summary(data_training)
+```
+
+Exclude variables.
+```{r d3}
+#Exclude the first 7 variables as they are just ID's (identifiers)
+data_training2 <- data_training[,-c(1:7)]
+
+#Exclude the variables that only contains NA's.
+data_training2 <- data_training2[,colSums(is.na(data_training2)) == 0]
+```
+
+```{r d4}
+dim(data_training2)
+```
+From the original 160 variables, we filtered it out, and now, we're up with only 53 variables. We can start working on those variables.
+
+####**Partition the Data**
+```{r d5}
+part <- createDataPartition(y = data_training2$classe, p=0.75, list=FALSE )
+development <- data_training2[part,]   #This will be used for the model development
+validation <- data_training2[-part,]   #This will be used for testing the model produced
+```
+
+####**Model Development**
+
+For predictive modelling, we will use several methods: linear discriminant analysis, Classification Tree model, and Random Forest model.
+```{r m1}
+#Linear Discriminant Analysis
+model1 <- train(classe ~ ., data=development, method="lda",na.action = na.exclude)
+#Classification Tree Model
+model2 <- train(classe ~., data=development, method="rpart",na.action = na.exclude)
+#Random Forest model
+model3 <- randomForest(classe ~.,data=development)
+```
+
+####**Model Assessment**
+
+From the models that we generated using three different methods, we will assess which of these models is the best to predict.
+```{r m2}
+#PREDICTIVE MODELLING using the Validation data
+predict1 <- predict(model1,validation)
+predict2 <- predict(model2,validation)
+predict3 <- predict(model3,validation)
+
+confusionMatrix(predict1, validation$classe)  
+confusionMatrix(predict2, validation$classe)  
+confusionMatrix(predict3, validation$classe)  
+
+```
+
+####**Conclusion**
+
+Based from the three methods, I finally decided to use Random Forest model as my predictive model as it has the HIGHEST ACCURACY, i.e. 0.9965 (vs. LDA: 0.7015, Classification Tree: 0.5006).
+Let us now use this to predict the results using **data_test**.
+
+```{r m3}
+answer <- predict(model3,data_test)
+
+answer
+```
